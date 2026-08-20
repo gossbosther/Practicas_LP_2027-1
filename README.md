@@ -4,5 +4,5 @@ Practicas de laboratorio de la materia Lenguajes de Programacion impartida por e
 Equipo ProgramaLocos:
 
 * Gustavo Emir Jimenez Cruz
-*
+* Irving Axel Cabrera Solís
 *

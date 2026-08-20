@@ -4,11 +4,29 @@ distanciaOrigen :: Double -> Double -> Double
 
 sumaCuadradosPares :: [Int] -> Int
 
+-- 3 Aplicar una función 3 veces al mismo valor
+
 aplicaTresVeces :: (a -> a) -> a -> a
+aplicaTresVeces :: f x = f (f (f x))
+
+
+-- 4 Calcula la varianza de 2 datos usando una media local
 
 varianza2 :: Double -> Double -> Double
+varianza2 x y = ((x - m)^2 + (y - m)^2)/2
+  where m = (x + y)/2
 
+-- 5 Clasificar temperatura con guardias e ifs
 clasificaTemperatura :: Int -> String
+clasificaTemperatura t 
+  | t < 0  = "frio extremio"
+  | t <= 10 = "frio"
+  | otherwise = if t<= 20
+                then "templado"
+                else if t<= 30
+                  then "calido"
+                  else "calor extremo"
+
 
 intercala :: a -> [a] -> [a]
 intercala _ [] = []
