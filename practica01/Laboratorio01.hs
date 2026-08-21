@@ -19,13 +19,11 @@ varianza2 x y = ((x - m)^2 + (y - m)^2)/2
 -- 5 Clasificar temperatura con guardias e ifs
 clasificaTemperatura :: Int -> String
 clasificaTemperatura t 
-  | t < 0  = "frio extremio"
-  | t <= 10 = "frio"
-  | otherwise = if t<= 20
-                then "templado"
-                else if t<= 30
-                  then "calido"
-                  else "calor extremo"
+  | t <= 0      = "frio extremo"
+  | t <= 15     = "frio"
+  | t <= 25     = "templado"
+  | t <= 35     = "calido"
+  | otherwise   = "calor extremo"
 
 
 intercala :: a -> [a] -> [a]
