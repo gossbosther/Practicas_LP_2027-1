@@ -5,4 +5,4 @@ Equipo ProgramaLocos:
 
 * Gustavo Emir Jimenez Cruz
 * Irving Axel Cabrera Solís
-*
+* Diego Sánchez Ortíz

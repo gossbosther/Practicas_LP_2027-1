@@ -1,13 +1,22 @@
 module Laboratorio01 where
 
+-- 1 Calcula la distancia euclidiana desde el punto (x, y) al origen.
+
 distanciaOrigen :: Double -> Double -> Double
+distanciaOrigen x y = sqrt(x^2 + y^2)
+
+-- 2 Calcula la suma de los cuadrados de aquellos elementos que sean pares.
 
 sumaCuadradosPares :: [Int] -> Int
+sumaCuadradosPares [] = 0
+sumaCuadradosPares (x:xs)
+  | even x = (x^2) + sumaCuadradosPares xs
+  | otherwise = sumaCuadradosPares xs
 
 -- 3 Aplicar una función 3 veces al mismo valor
 
 aplicaTresVeces :: (a -> a) -> a -> a
-aplicaTresVeces :: f x = f (f (f x))
+aplicaTresVeces f x = f (f (f x))
 
 
 -- 4 Calcula la varianza de 2 datos usando una media local
