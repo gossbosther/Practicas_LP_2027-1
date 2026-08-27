@@ -35,6 +35,20 @@ tokens :-
   --   and, or, *, /, expt, <, >, <=, >=, eq, add1, sub1, zero?
   -- Recuerda reconocer <= y >= como tokens completos.
 
+ and                    {\_ -> TokenAnd }
+ or                     {\_ -> TokenOr }
+ \*                     {\_ -> TokenMul }
+ \/                     {\_ -> TokenDiv }
+ expt                   {\_ -> TokenExpt }
+ \<                     {\_ -> TokenLT }
+ \>                     {\_ -> TokenGT }
+ "<="                   {\_ -> TokenLE }
+ ">="                   {\_ -> TokenGE }
+ eq                     {\_ -> TokenEq }
+ add1                   {\_ -> TokenAdd1 }
+ sub1                   {\_ -> TokenSub1 }
+ zero"?"                {\_ -> TokenZeroP }
+
   .                     { \s -> error ("Lexical error: caracter no reconocido = "
                                       ++ show s
                                       ++ " | codepoints = "
