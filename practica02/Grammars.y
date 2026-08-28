@@ -62,6 +62,11 @@ ASA : nat                      { Num $1 }
 -- Agrega un no terminal para representar dos o mas argumentos.
 -- El resultado debe ser una lista de ASA.
 
+n : ASA ASA u               { $1 : $2 : $3 }
+
+u :                         { [] }
+  | ASA u                   { $1 : $2 }
+
 {
 parseError :: [Token] -> a
 parseError toks = error ("Parse error: " ++ show toks)
