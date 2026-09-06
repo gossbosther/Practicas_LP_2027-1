@@ -5,6 +5,11 @@ import Grammars
 -- RETO 3: sustitucion nominal que evita captura
 freeVars :: ASA -> [String]
 
+-- Para eliminar duplicados de las listas (equivalente a nub de Data.List)
+unique :: Eq a => [a] -> [a]
+unique [] = []
+unique (x:xs) = x : unique (filter (/= x) xs)
+
 -- Aqui obtenemos las variables libres de una expresion, hay que ir respetando los alcances de Let y Let*
 freeVars (Id x) = [x]
 freeVars (Num _) = []
