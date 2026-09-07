@@ -61,8 +61,15 @@ ASA : nat                           { Num $1 }
 --   * let* con una o mas asociaciones;
 --   * los no terminales Bindings y Binding.
 
+    | var                                  { Id $1 }
+    | '(' "let" Bindings ASA ')'           { Let $4 $6 }
+    | '(' "let*" Bindings ASA ')'          { LetStar $4 $6 }
+
 Args : ASA ASA                       { [$1, $2] }
      | ASA Args                      { $1 : $2 }
+
+Bindings : '(' var ASA ')'             { [($2, $3)] }
+         | Bindings '(' var ASA ')'    { $1 ++ [($3, $4)] }
 
 {
 parseError :: [Token] -> a
