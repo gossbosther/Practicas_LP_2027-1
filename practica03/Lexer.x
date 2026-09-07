@@ -48,6 +48,9 @@ tokens :-
   -- RETO 1
   -- Agrega, en el orden correcto, las reglas para:
   --   let, let* e identificadores.
+  "let"                  { \_ -> TokenLet }
+  "let*"                 { \_ -> TokenLetStar }
+  $letter $idrest*       { \s -> TokenId s }
 
   .                     { \s -> error ("Lexical error: caracter no reconocido = "
                                       ++ show s
