@@ -42,12 +42,63 @@ freeVars (LetStar ((v, e):rest) body) =
   in unique (fvE ++ fvRest)
 
 names :: ASA -> [String]
+names (Num _) = []
+names (Boolean _) = []
+names (Id x) = [x]
+names (And n) = names2 n
+names (Or n) = names2 n
+names (Add n) = names2 n
+names (Sub n) = names2 n
+names (Mul n) = names2 n
+names (Div n) = names2 n
+names (Lt n) = names2 n
+names (Gt n) = names2 n
+names (Le n) = names2 n
+names (Ge n) = names2 n
+names (Expt e1 e2) = names e1 ++ names e2
+names (EqP e1 e2) = names e1 ++ names e2
+names (Not e) = names e
+names (Add1 e) = names e
+names (Sub1 e) = names e
+names (Let x y) = []
+names (LetStar x y) = []
+
+names2 :: [ASA] -> [String]
+names2 [] = []
+names2 (x:xs) = names x ++ names2 xs
 
 freshName :: [String] -> String
 
 sust :: ASA -> String -> ASA -> ASA
+sust (Num n) _ _ = Num n
+sust (Boolean b) _ _ = Boolean b
+sust (Id x) y z 
+    | x == y = z
+    | otherwise = Id x
+sust (Add n) x s = Add sust2 n x s
+sust (Sub n) x s = Sub sust2 n x s
+sust (Mul n) x s = Mul sust2 n x s
+sust (Div n) x s = Div sust2 n x s
+sust (Lt n) x s = Lt sust2 n x s
+sust (Gt n) x s = Gt sust2 n x s
+sust (Le n) x s = Le sust2 n x s
+sust (Expt e1 e2) x s = Expt (sust e1 x s) (sust e2 x s)
+sust (EqP e1 e2) x s = EqP (sust e1 x s) (sust e2 x s)
+sust (Not e) x s = Not (sust e x s)
+sust (Add1 e) x s = Add1 (sust e x s)
+sust (Sub1 e) x s = Sub1 (sust e x s)
+sust (Let x y) z w 
+    | x == z = Let (sustBinding x z w) 
+    | x /= z && notElem z (freeVars w) = Let (sustBinding x z w) (sust y x w)
+    | x /= z && elem z (freeVars w) = 
+        let t = freshName y in Let t (sustBinding x z w) sust (sust y x (Id t) ) z w
+
+sust2 :: [ASA] -> String -> ASA -> [ASA]
+sust2 [] _ _ = []
+sust2 (x:xs) y z = sust x y z : sust2 xs y z
 
 sustMany :: ASA -> [Binding] -> ASA
+
 
 -- RETO 4: semantica operacional de paso grande
 -- let es simultaneo; let* se evalua directamente, asociacion por asociacion.
