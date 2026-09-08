@@ -103,3 +103,53 @@ sustMany :: ASA -> [Binding] -> ASA
 -- RETO 4: semantica operacional de paso grande
 -- let es simultaneo; let* se evalua directamente, asociacion por asociacion.
 bigStep :: ASA -> Maybe ASA
+
+-- Funciones auxiliares que se encargan de desenvolver y tipificar los valores evaluados de forma segura
+unwrapNum :: ASA -> Maybe Int
+unwrapNum (Num n) = Just n
+unwrapNum _ = Nothing
+
+unwrapBool :: ASA -> Maybe Bool
+unwrapBool (Boolean b) = Just b
+unwrapBool _ = Nothing
+
+-- Funciones  auxiliares que se encargan de evaluar primitivas múltiples argumentos 
+evalComp :: (Int -> Int -> Bool) -> [ASA] -> Maybe ASA
+evalComp op args = do
+    vs <- mapM bigStep args
+    ns <- mapM unwrapNum vs
+    Just (Boolean (pairwise op ns))
+  where
+    -- Aqui verificamos que operación se cumpla en cadena para todos los elementos 
+    pairwise _ [] = True
+    pairwise _ [_] = True
+    pairwise op (x:y:xs) = op x y && pairwise op (y:xs)
+
+
+
+-- Primitivas Aritméticas
+bigStep (Add args) = do
+    vs <- mapM bigStep args
+    ns <- mapM unwrapNum vs
+    Just (Num (sum ns))
+    
+bigStep (Sub args) = do
+    vs <- mapM bigStep args
+    ns <- mapM unwrapNum vs
+    case ns of
+        [] -> Nothing
+        [x] -> Just (Num (-x))
+        (x:xs) -> Just (Num (foldl (-) x xs))
+        
+bigStep (Mul args) = do
+    vs <- mapM bigStep args
+    ns <- mapM unwrapNum vs
+    Just (Num (product ns))
+    
+bigStep (Div args) = do
+    vs <- mapM bigStep args
+    ns <- mapM unwrapNum vs
+    case ns of
+        [] -> Nothing
+        [x] -> if x == 0 then Nothing else Just (Num (div 1 x))
+        (x:xs) -> if 0 `elem` xs then Nothing else Just (Num (foldl div x xs))
