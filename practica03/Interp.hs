@@ -4,42 +4,48 @@ import Grammars
 
 -- RETO 3: sustitucion nominal que evita captura
 freeVars :: ASA -> [String]
-
--- Para eliminar duplicados de las listas (equivalente a nub de Data.List)
-unique :: Eq a => [a] -> [a]
-unique [] = []
-unique (x:xs) = x : unique (filter (/= x) xs)
-
--- Aqui obtenemos las variables libres de una expresion, hay que ir respetando los alcances de Let y Let*
 freeVars (Id x) = [x]
 freeVars (Num _) = []
 freeVars (Boolean _) = []
-freeVars (And args) = unique (concatMap freeVars args)
-freeVars (Or args) = unique (concatMap freeVars args)
-freeVars (Add args) = unique (concatMap freeVars args)
-freeVars (Sub args) = unique (concatMap freeVars args)
-freeVars (Mul args) = unique (concatMap freeVars args)
-freeVars (Div args) = unique (concatMap freeVars args)
-freeVars (Lt args) = unique (concatMap freeVars args)
-freeVars (Gt args) = unique (concatMap freeVars args)
-freeVars (Le args) = unique (concatMap freeVars args)
-freeVars (Ge args) = unique (concatMap freeVars args)
-freeVars (Expt a b) = unique (freeVars a ++ freeVars b)
-freeVars (EqP a b) = unique (freeVars a ++ freeVars b)
-freeVars (Not a) = freeVars a
-freeVars (Add1 a) = freeVars a
-freeVars (Sub1 a) = freeVars a
-freeVars (ZeroP a) = freeVars a
-freeVars (Let binds body) =
-  let (vars, exprs) = unzip binds
-      fvExprs = concatMap freeVars exprs
-      fvBody = filter (`notElem` vars) (freeVars body)
-  in unique (fvExprs ++ fvBody)
-freeVars (LetStar [] body) = freeVars body
-freeVars (LetStar ((v, e):rest) body) =
-  let fvE = freeVars e
-      fvRest = filter (/= v) (freeVars (LetStar rest body))
-  in unique (fvE ++ fvRest)
+freeVars (And e) = free e
+freeVars (Or e) = free e
+freeVars (Add e) = free e
+freeVars (Sub e) = free e
+freeVars (Mul e) = free e
+freeVars (Div e) = free e
+freeVars (Lt e) = free e
+freeVars (Gt e) = free e
+freeVars (Le e) = free e
+freeVars (Ge e) = free e
+freeVars (Expt e1 e2) = freeVars e1 ++ freeVars e2
+freeVars (EqP e1 e2) = freeVars e1 ++ freeVars e2
+freeVars (Not e) = freeVars e
+freeVars (Add1 e) = freeVars e
+freeVars (Sub1 e) = freeVars e
+freeVars (ZeroP e) = freeVars e
+freeVars (Let x y) = freeBindingLet x ++ filtrar (nombresVars x) (freeVars y)
+freeVars (LetStar x y) = freeBinding x y
+
+free :: [ASA] -> [String]
+free [] = []
+free (x:xs) = freeVars x ++ free xs
+
+freeBindingLet ::[Binding] -> [String]
+freeBindingLet [] = []
+freeBindingLet ((_, y):xs) = freeVars y ++ freeBindingLet xs
+
+nombresVars :: [Binding] -> [String]
+nombresVars [] = []
+nombresVars ((x, _):xs) = x : nombresVars xs
+
+filtrar :: [String] -> [String] -> [String]
+filtrar [] x = x
+filtrar (x:xs) y = filtrar xs (filter (/= x) y)
+
+freeBinding :: [Binding] -> ASA -> [String]
+freeBinding [] x = freeVars x
+freeBinding ((x, y):xs) z = freeVars y ++ filter (/= x) (freeBinding xs z)
+
 
 names :: ASA -> [String]
 names (Num _) = []
@@ -60,6 +66,7 @@ names (EqP e1 e2) = names e1 ++ names e2
 names (Not e) = names e
 names (Add1 e) = names e
 names (Sub1 e) = names e
+names (ZeroP e) = names e
 names (Let x y) = namesBinding x ++ names y
 names (LetStar x y) = namesBinding x ++ names y
 
@@ -86,6 +93,7 @@ sust (Boolean b) _ _ = Boolean b
 sust (Id x) y z 
     | x == y = z
     | otherwise = Id x
+sust (And n) x s = And (sust2 n x s)
 sust (Add n) x s = Add (sust2 n x s)
 sust (Sub n) x s = Sub (sust2 n x s)
 sust (Mul n) x s = Mul (sust2 n x s)
@@ -105,27 +113,27 @@ sust (Let x y) z w
     | otherwise = 
         let conflicto = head (filter (`elem` freeVars w) (nombresVars x))
             t = freshName (names (Let x y) ++ freeVars w ++ [z])
-            renombraBinding (v, e) = (if v == conflicto then t else v, e)
+            renombraBinding (v, e) = (if v == conflicto then t else v, sust e conflicto (Id t))
             x' = map renombraBinding x
             y' = sust y conflicto (Id t)
         in Let (sustBindings x' z w) (sust y' z w)
 sust (LetStar [] body) z w = LetStar [] (sust body z w)
 sust (LetStar ((v, e):bs) body) z w
-  | v == z = 
-      LetStar ((v, sust e z w) : bs) body
+  | v == z = LetStar ((v, sust e z w) : bs) body
   | v `elem` freeVars w =
-      let t    = freshName (names (LetStar ((v, e):bs) body) ++ freeVars w ++ [z])
-          e'   = sust e z w
-          bs'  = map (\(var, expr) -> (if var == v then t else var, sust expr v (Id t))) bs
-          body'= sust body v (Id t)
+      let t     = freshName (names (LetStar ((v, e):bs) body) ++ freeVars w ++ [z])
+          e'    = sust e z w
+          bs'   = map (\(var, expr) -> (if var == v then t else var, sust expr v (Id t))) bs
+          body' = sust body v (Id t)
       in case sust (LetStar bs' body') z w of
            LetStar bs'' body'' -> LetStar ((t, e') : bs'') body''
-           _ -> error "imposible"
-  | otherwise =
-      let e' = sust e z w
-      in case sust (LetStar bs body) z w of
-           LetStar bs' body' -> LetStar ((v, e') : bs') body'
-           _  -> error "imposible"
+           _                   -> LetStar ((t, e') : bs') body
+    | otherwise =
+        let e' = sust e z w
+        in case sust (LetStar bs body) z w of
+            LetStar bs' body' -> LetStar ((v, e') : bs') body'
+            _                 -> LetStar ((v, e') : bs) body
+        
 
 sust2 :: [ASA] -> String -> ASA -> [ASA]
 sust2 [] _ _ = []
@@ -140,7 +148,6 @@ renombrarStar [] _ _ = []
 renombrarStar ((x, y):xs) z w 
     | x == z = (w, sust y z (Id w)) : sustBindings xs z (Id w)
     | otherwise = (x, sust y z (Id w)) : renombrarStar xs z w
-
 
 sustMany :: ASA -> [Binding] -> ASA
 sustMany (Num n) _ = Num n
@@ -185,6 +192,7 @@ sustManyBindings [] _ = []
 sustManyBindings ((x, y):xs) z = (x, sustMany y z) : sustManyBindings xs z
 
 
+
 -- RETO 4: semantica operacional de paso grande
 -- let es simultaneo; let* se evalua directamente, asociacion por asociacion.
 bigStep :: ASA -> Maybe ASA
@@ -206,8 +214,7 @@ bigStep (Sub (x:xs)) = do
   vs <- mapM bigStep xs
   n  <- getNum v
   ns <- mapM getNum vs
-  let res = foldl (-) n ns
-  Just (Num (max 0 res))
+  Just (Num (max 0 (foldl (-) n ns)))
 bigStep (Mul args) = do
   vs <- mapM bigStep args
   ns <- mapM getNum vs
@@ -278,19 +285,23 @@ bigStep (Ge xs) = do
   evs <- bigStep2 xs
   ns  <- mapM getNum evs
   if length ns < 2 then Nothing else Just (Boolean (ordenadoP (>=) ns))
+bigStep (Let [] body) = bigStep body
 bigStep (Let bs body)
   | duplicadosP (map fst bs) = Nothing
   | otherwise = do
       vals <- mapM (\(_, e) -> bigStep e) bs
       let vars  = map fst bs
           subst = zip vars vals
-      bigStep (sustMany body subst)
+          body' = foldl (\acc (v, val) -> sust acc v val) body subst
+      bigStep body'
+
+-- LetStar
 bigStep (LetStar [] body) = bigStep body
 bigStep (LetStar ((var, val):bs) body) = do
-    v <- bigStep val
-    let bs'   = map (\(x, e) -> (x, sust e var v)) bs
-        body' = sust body var v
-    bigStep (LetStar bs' body')
+  v <- bigStep val
+  case sust (LetStar bs body) var v of
+    LetStar bs' body' -> bigStep (LetStar bs' body')
+    expr              -> bigStep expr
 
 getNum :: ASA -> Maybe Int
 getNum (Num n) = Just n
