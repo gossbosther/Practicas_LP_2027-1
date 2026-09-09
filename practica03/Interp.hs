@@ -86,36 +86,46 @@ sust (Boolean b) _ _ = Boolean b
 sust (Id x) y z 
     | x == y = z
     | otherwise = Id x
-sust (Add n) x s = Add sust2 n x s
-sust (Sub n) x s = Sub sust2 n x s
-sust (Mul n) x s = Mul sust2 n x s
-sust (Div n) x s = Div sust2 n x s
-sust (Lt n) x s = Lt sust2 n x s
-sust (Gt n) x s = Gt sust2 n x s
-sust (Le n) x s = Le sust2 n x s
+sust (Add n) x s = Add (sust2 n x s)
+sust (Sub n) x s = Sub (sust2 n x s)
+sust (Mul n) x s = Mul (sust2 n x s)
+sust (Div n) x s = Div (sust2 n x s)
+sust (Lt n) x s = Lt (sust2 n x s)
+sust (Gt n) x s = Gt (sust2 n x s)
+sust (Le n) x s = Le (sust2 n x s)
 sust (Expt e1 e2) x s = Expt (sust e1 x s) (sust e2 x s)
 sust (EqP e1 e2) x s = EqP (sust e1 x s) (sust e2 x s)
 sust (Not e) x s = Not (sust e x s)
 sust (Add1 e) x s = Add1 (sust e x s)
 sust (Sub1 e) x s = Sub1 (sust e x s)
+sust (ZeroP e) x s = ZeroP (sust e x s)
 sust (Let x y) z w 
     | z `elem` nombresVars x = Let (sustBindings x z w) y
     | null (filter (`elem` freeVars w) (nombresVars x)) = Let (sustBindings x z w) (sust y z w)
     | otherwise = 
         let conflicto = head (filter (`elem` freeVars w) (nombresVars x))
             t = freshName (names (Let x y) ++ freeVars w ++ [z])
-            x' = sustBindings x conflicto (Id t)
+            renombraBinding (v, e) = (if v == conflicto then t else v, e)
+            x' = map renombraBinding x
             y' = sust y conflicto (Id t)
         in Let (sustBindings x' z w) (sust y' z w)
-sust (LetStar x y) z w 
-    | z `elem` nombresVars x = LetStar (sustBindings x z w) y
-    | null (filter (`elem` freeVars w) (nombresVars x)) =  LetStar (sustBindings x z w) (sust y z w)
-    | otherwise = 
-        let conflicto = head (filter (`elem` freeVars w) (nombresVars x))
-            t = freshName (names (LetStar x y) ++ freeVars w ++ [z])
-            x' = renombrarStar x conflicto t
-            y' = sust y conflicto (Id t)
-        in LetStar (sustBindings x' z w) (sust y' z w)
+sust (LetStar [] body) z w = LetStar [] (sust body z w)
+sust (LetStar ((v, e):bs) body) z w
+  | v == z = 
+      LetStar ((v, sust e z w) : bs) body
+  | v `elem` freeVars w =
+      let t    = freshName (names (LetStar ((v, e):bs) body) ++ freeVars w ++ [z])
+          e'   = sust e z w
+          bs'  = map (\(var, expr) -> (if var == v then t else var, sust expr v (Id t))) bs
+          body'= sust body v (Id t)
+      in case sust (LetStar bs' body') z w of
+           LetStar bs'' body'' -> LetStar ((t, e') : bs'') body''
+           _ -> error "imposible"
+  | otherwise =
+      let e' = sust e z w
+      in case sust (LetStar bs body) z w of
+           LetStar bs' body' -> LetStar ((v, e') : bs') body'
+           _  -> error "imposible"
 
 sust2 :: [ASA] -> String -> ASA -> [ASA]
 sust2 [] _ _ = []
@@ -181,42 +191,53 @@ bigStep :: ASA -> Maybe ASA
 bigStep (Num n) = Just (Num n)
 bigStep (Boolean b) = Just (Boolean b)
 bigStep (Id _) = Nothing
+bigStep (Add []) = Nothing
 bigStep (Add args) = do
-    vs <- mapM bigStep args
-    ns <- mapM getNum vs
-    Just (Num (sum ns))
-bigStep (Sub args) = do
-    vs <- mapM bigStep args
-    ns <- mapM getNum vs
-    case ns of
-        [] -> Nothing
-        [x] -> Just (Num (-x))
-        (x:xs) -> Just (Num (foldl (-) x xs))
+  vs <- mapM bigStep args
+  ns <- mapM getNum vs
+  Just (Num (sum ns))
+bigStep (Sub []) = Nothing
+bigStep (Sub [e]) = do
+  v <- bigStep e
+  _ <- getNum v
+  Just (Num 0)
+bigStep (Sub (x:xs)) = do
+  v  <- bigStep x
+  vs <- mapM bigStep xs
+  n  <- getNum v
+  ns <- mapM getNum vs
+  let res = foldl (-) n ns
+  Just (Num (max 0 res))
 bigStep (Mul args) = do
-    vs <- mapM bigStep args
-    ns <- mapM getNum vs
-    Just (Num (product ns))
-bigStep (Div args) = do
-    vs <- mapM bigStep args
-    ns <- mapM getNum vs
-    case ns of
-        [] -> Nothing
-        [x] -> if x == 0 then Nothing else Just (Num (div 1 x))
-        (x:xs) -> if 0 `elem` xs then Nothing else Just (Num (foldl div x xs))
+  vs <- mapM bigStep args
+  ns <- mapM getNum vs
+  Just (Num (product ns))
+bigStep (Div [])  = Nothing
+bigStep (Div [_]) = Nothing -- Requiere al menos 2 operandos
+bigStep (Div (x:xs)) = do
+  v  <- bigStep x
+  vs <- mapM bigStep xs
+  n  <- getNum v
+  ns <- mapM getNum vs
+  if 0 `elem` ns
+    then Nothing
+    else Just (Num (foldl div n ns))
 bigStep (Add1 e) = do
     v <- bigStep e
     n <- getNum v
     return (Num (n + 1))
 bigStep (Sub1 e) = do
-    v <- bigStep e
-    n <- getNum v
-    return (Num (n - 1))
+  v <- bigStep e
+  n <- getNum v
+  Just (Num (max 0 (n - 1)))
 bigStep (Expt e1 e2) = do
-    v1 <- bigStep e1
-    v2 <- bigStep e2
-    n1 <- getNum v1
-    n2 <- getNum v2
-    return (Num (n1 ^ n2))
+  v1 <- bigStep e1
+  v2 <- bigStep e2
+  n1 <- getNum v1
+  n2 <- getNum v2
+  if n2 < 0 
+    then Nothing 
+    else Just (Num (n1 ^ n2))
 bigStep (And xs) = do
     evs   <- bigStep2 xs
     bools <- mapM getBool evs
@@ -226,46 +247,44 @@ bigStep (Or xs) = do
     bools <- mapM getBool evs
     return (Boolean (or bools))
 bigStep (Not e) = do
-    v <- bigStep e
-    b <- getBool v
-    return (Boolean (not b))
+  v <- bigStep e
+  case v of
+    Boolean False -> Just (Boolean True)
+    _ -> Just (Boolean False)
 bigStep (ZeroP e) = do
     v <- bigStep e
     n <- getNum v
     return (Boolean (n == 0))
 bigStep (EqP e1 e2) = do
-    v1 <- bigStep e1
-    v2 <- bigStep e2
-    return (Boolean (v1 == v2))
+  v1 <- bigStep e1
+  v2 <- bigStep e2
+  case (v1, v2) of
+    (Num n1, Num n2) -> Just (Boolean (n1 == n2))
+    (Boolean b1, Boolean b2) -> Just (Boolean (b1 == b2))
+    _ -> Nothing  
 bigStep (Lt xs) = do
   evs <- bigStep2 xs
   ns  <- mapM getNum evs
-  case ns of
-    [n1, n2] -> Just (Boolean (n1 < n2))
-    _        -> Nothing
+  if length ns < 2 then Nothing else Just (Boolean (ordenadoP (<) ns))
 bigStep (Gt xs) = do
   evs <- bigStep2 xs
   ns  <- mapM getNum evs
-  case ns of
-    [n1, n2] -> Just (Boolean (n1 > n2))
-    _        -> Nothing
+  if length ns < 2 then Nothing else Just (Boolean (ordenadoP (>) ns))
 bigStep (Le xs) = do
   evs <- bigStep2 xs
   ns  <- mapM getNum evs
-  case ns of
-    [n1, n2] -> Just (Boolean (n1 <= n2))
-    _        -> Nothing
+  if length ns < 2 then Nothing else Just (Boolean (ordenadoP (<=) ns))
 bigStep (Ge xs) = do
   evs <- bigStep2 xs
   ns  <- mapM getNum evs
-  case ns of
-    [n1, n2] -> Just (Boolean (n1 >= n2))
-    _        -> Nothing
-bigStep (Let bs body) =  (do
-    vals <- mapM (\(_, e) -> bigStep e) bs
-    let vars  = map fst bs
-        subst = zip vars vals
-    bigStep (sustMany body subst))
+  if length ns < 2 then Nothing else Just (Boolean (ordenadoP (>=) ns))
+bigStep (Let bs body)
+  | duplicadosP (map fst bs) = Nothing
+  | otherwise = do
+      vals <- mapM (\(_, e) -> bigStep e) bs
+      let vars  = map fst bs
+          subst = zip vars vals
+      bigStep (sustMany body subst)
 bigStep (LetStar [] body) = bigStep body
 bigStep (LetStar ((var, val):bs) body) = do
     v <- bigStep val
@@ -295,3 +314,11 @@ getNumsList (x:xs) = do
   ns <- getNumsList xs
   return (n:ns)
 
+duplicadosP :: Eq a => [a] -> Bool
+duplicadosP []     = False
+duplicadosP (x:xs) = x `elem` xs || duplicadosP xs
+
+ordenadoP :: (a -> a -> Bool) -> [a] -> Bool
+ordenadoP _ []         = True
+ordenadoP _ [_]        = True
+ordenadoP op (x:y:rest) = x `op` y && ordenadoP op (y:rest)
