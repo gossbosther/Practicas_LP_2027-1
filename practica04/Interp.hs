@@ -49,7 +49,13 @@ desugar :: SASA -> Maybe ASA
 -- RETO 2: evaluacion con cerraduras ---------------------------------------
 
 -- Busca la asociacion mas reciente de un identificador.
+--Es una lista de tuplas donde los elementos más recientes se añaden al inicio. 
+--La búsqueda recorre la lista devolviendo el primer acierto, respetando de facto el sombreado de variables.
 lookupEnv :: Nombre -> Env -> Maybe Value
+lookupEnv _ [] = Nothing
+lookupEnv x ((y, v):env)
+  | x == y    = Just v
+  | otherwise = lookupEnv x env
 
 -- Evalua con alcance estatico. Fun produce una cerradura con el ambiente
 -- actual. App evalua primero la posicion de funcion, despues el argumento y
