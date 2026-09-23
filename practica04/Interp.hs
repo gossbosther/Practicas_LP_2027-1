@@ -37,6 +37,9 @@ curryApp f args = Just (foldl App f args)
 -- Convierte dos o mas operandos en operaciones binarias asociadas por la
 -- izquierda. El constructor recibido sera Add o Sub.
 binaryOp :: (ASA -> ASA -> ASA) -> [ASA] -> Maybe ASA
+binaryOp _ [] = Nothing
+binaryOp _ [_] = Nothing
+binaryOp constructor (x:xs) = Just (foldl constructor x xs)
 
 -- Convierte las ligaduras de let* en let anidados y despues elimina cada let
 -- mediante LetS x e1 e2 ==> App (Fun x e2') e1'. La primera ligadura debe
