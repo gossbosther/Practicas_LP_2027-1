@@ -30,6 +30,9 @@ curryFun :: [Nombre] -> ASA -> Maybe ASA
 -- Convierte una aplicacion con uno o mas argumentos en aplicaciones unarias
 -- asociadas por la izquierda.
 curryApp :: ASA -> [ASA] -> Maybe ASA
+curryApp _ [] = Nothing
+curryApp f args = Just (foldl App f args)
+
 
 -- Convierte dos o mas operandos en operaciones binarias asociadas por la
 -- izquierda. El constructor recibido sera Add o Sub.
