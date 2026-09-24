@@ -83,6 +83,8 @@ desugar (AppS e1 e2) = do
 -- RETO 2: evaluacion con cerraduras ---------------------------------------
 
 -- Busca la asociacion mas reciente de un identificador.
+--Es una lista de tuplas donde los elementos más recientes se añaden al inicio. 
+--La búsqueda recorre la lista devolviendo el primer acierto, respetando de facto el sombreado de variables.
 lookupEnv :: Nombre -> Env -> Maybe Value
 lookupEnv _ [] = Nothing
 lookupEnv x ((y,z):yz)
