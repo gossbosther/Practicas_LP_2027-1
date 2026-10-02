@@ -161,4 +161,3 @@ bigStep env (If a t e)
       then bigStep env t 
       else bigStep env e
   | otherwise = Nothing
-
