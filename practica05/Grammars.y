@@ -51,12 +51,10 @@ SASA : var                               { IdS $1 }
      -- siempre con una clausula else. Consume la primera clausula ordinaria
      -- en la produccion de cond y define un no terminal Clauses para las
      -- clausulas restantes y el else final.
-     | '(' "if" SASA SASA SASA ')'           { IfS $3 $4 $5 }
-     | '(' "letrec" '(' var SASA ')' SASA ')'{ LetRecS $4 $5 $7 }
-     | '(' "cond" '(' SASA SASA ')' Clauses ')' 
-                                             { let (restantes, casoElse) = $7 in CondS (($4, $5) : restantes) casoElse }
-
-                                             --Falta hacer clauses
+     | '(' "if" SASA SASA SASA ')'                                { IfS $3 $4 $5 }
+     | '(' "cond" '(' Clauses ')' '(' "else" SASA ')' ')'         { CondS $4 $8 }
+     | '(' "letrec" '(' var SASA ')' SASA ')'                     { LetRecS $4 $5 $7 }
+     
 
 Params : var                             { [$1] }
        | var Params                      { $1 : $2 }
@@ -69,6 +67,9 @@ Operands : SASA SASA                     { [$1, $2] }
 
 Bindings : '(' var SASA ')'              { [($2, $3)] }
          | '(' var SASA ')' Bindings     { ($2, $3) : $5 }
+
+Clauses : '(' SASA SASA ')'               { [($2, $3)] }
+        | '(' SASA SASA ')' Clauses       { ($2, $3) : $5 }
 
 {
 parseError :: [Token] -> a
