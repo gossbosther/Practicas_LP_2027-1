@@ -116,8 +116,8 @@ strict (ExprV x e)
 -- La resta sobre naturales permanece truncada en cero.
 bigStep :: Env -> ASA -> Maybe Value
 bigStep env (Id s) = lookupEnv s env
-bigStep _ (Num n) = Just (Num n)
-bigStep _ (Boolean b) = Just (Boolean b)
+bigStep _ (Num n) = Just (NumV n)
+bigStep _ (Boolean b) = Just (BooleanV b)
 bigStep env (Add e1 e2) 
   | Just e1' <- bigStep env e1, Just e2' <- bigStep env e2,
     Just (NumV n) <- strict e1', Just (NumV m) <- strict e2' = Just (NumV (n + m))
