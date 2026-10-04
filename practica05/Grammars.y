@@ -52,7 +52,7 @@ SASA : var                               { IdS $1 }
      -- en la produccion de cond y define un no terminal Clauses para las
      -- clausulas restantes y el else final.
      | '(' "if" SASA SASA SASA ')'                                { IfS $3 $4 $5 }
-     | '(' "cond" '(' Clauses ')' '(' "else" SASA ')' ')'         { CondS $4 $8 }
+     | '(' "cond" Clauses '(' "else" SASA ')' ')'                 { CondS $3 $6 }
      | '(' "letrec" '(' var SASA ')' SASA ')'                     { LetRecS $4 $5 $7 }
      
 
